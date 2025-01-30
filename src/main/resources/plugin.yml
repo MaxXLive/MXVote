@@ -1,0 +1,4 @@
+name: MXVote
+version: '1.0-SNAPSHOT'
+main: de.ermackov.mxvote.MXVote
+api-version: '1.21'
