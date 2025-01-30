@@ -1,0 +1,5 @@
+vote:
+  enabled: true   # Enable/Disable voting in general
+  duration: 60    # Duration of the vote in seconds
+  message_prefix: "&6[MXVote] &f"
+  time_change_step_size: 500

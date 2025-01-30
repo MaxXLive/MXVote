@@ -1,4 +1,5 @@
 package de.ermackov.mxvote.entities
 
-object Vote {
-}
+import org.bukkit.entity.Player
+
+data class Vote(val player: Player, val isInitiator: Boolean, val voteYes: Boolean)

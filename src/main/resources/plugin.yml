@@ -1,4 +1,29 @@
 name: MXVote
-version: '1.0-SNAPSHOT'
+version: '${project.version}'
 main: de.ermackov.mxvote.MXVote
 api-version: '1.21'
+
+commands:
+  mxvote:
+    description: Tests the MXVote plugin
+    usage: /mxvote
+  vote:
+    description: Start a vote
+    usage: /vote <type>
+    aliases: [v]
+permissions:
+  mxvote.vote.day:
+    description: Allows players to vote for "Day"
+    default: op
+  mxvote.vote.night:
+    description: Allows players to vote for "Night"
+    default: op
+  mxvote.vote.sunny:
+    description: Allows players to vote for "Sunny"
+    default: op
+  mxvote.vote.contribute:
+    description: Allows players to contribute to a voting (yes/no)
+    default: op
+  mxvote.test.version:
+    description: Allows players to get version of the plugin
+    default: op
