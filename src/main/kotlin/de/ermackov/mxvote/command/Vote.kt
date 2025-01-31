@@ -44,7 +44,7 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
         }
 
         if (args.isEmpty()) {
-            sender.sendMessage("$prefix${ChatColor.RED}Please provide a argument.")
+            sender.sendMessage("$prefix${ChatColor.RED}Please provide an argument.")
             return false
         }
 
