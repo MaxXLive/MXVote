@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: minecraft-plugin-jar
-          path: target/*.jar
+          path: target/mx*.jar
 
       # Step 5: Extract version from pom.xml
       - name: Extract version from pom.xml
@@ -50,6 +50,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.MXVOTE_CREATE_RELEASE }}
-          files: target/*.jar
+          files: target/mx*.jar
           tag_name: v${{ env.VERSION }}
+          name: ${{ github.repository } v${{ env.VERSION }}
 
