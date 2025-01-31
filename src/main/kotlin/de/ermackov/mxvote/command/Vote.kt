@@ -49,7 +49,6 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
         }
 
         when (args[0]){
-            "status" -> handleStatus(sender)
             "cancel" -> handleCancel(sender)
             "yes" -> handleVote(sender, true)
             "no" -> handleVote(sender, false)
@@ -59,19 +58,6 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
             else -> sender.sendMessage("$prefix${ChatColor.RED}Invalid argument: ${args[0]}")
         }
         return true
-    }
-
-    private fun handleStatus(player: Player) {
-        if (!voteInProgress){
-            player.sendMessage("$prefix There is no vote currently running.")
-            return
-        }
-
-        player.sendMessage("---------- Current voting ----------")
-        player.sendMessage("Initialed by: ${getVoteInitiator()?.name}")
-        player.sendMessage("Voting for: ${formatVoteType(type)}")
-        player.sendMessage("Time left: $timeLeft seconds")
-        player.sendMessage("----------------------------------")
     }
 
     private fun handleCancel(player: Player) {
@@ -167,6 +153,11 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
             return
         }
 
+        if(!voteInProgress){
+            player.sendMessage("$prefix${ChatColor.RED}There is no voting in progress!")
+            return
+        }
+
         if (!canPlayerVote(player)) {
             player.sendMessage("$prefix${ChatColor.RED}You have already voted!")
             return
@@ -190,14 +181,10 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
         val stepSize = config.getTimeChangeStepSize()
         var newTime = world.time
 
-        plugin.logger.info("target time: $targetTime")
-        plugin.logger.info("target time range : [${targetTime - stepSize}, ${targetTime + stepSize}]")
         object : BukkitRunnable() {
             override fun run() {
                 // Update time by step
                 newTime += stepSize
-
-                plugin.logger.info("current time: $newTime")
 
                 // If the time exceeds the target time, stop the task
                 if (newTime >= targetTime - stepSize && newTime <= targetTime + stepSize) {
@@ -293,7 +280,7 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
 
     private fun createBossBar() {
         val bossBar = Bukkit.createBossBar(
-            "${ChatColor.YELLOW}Voting started for: ${formatVoteType(type)}}",
+            "${ChatColor.YELLOW}Voting started for: ${formatVoteType(type)}",
             BarColor.YELLOW,
             BarStyle.SOLID
         )
