@@ -33,8 +33,9 @@ jobs:
       # Step 4: Create a tag (using the commit SHA)
       - name: Create Git tag
         run: |
-          git tag "v$(date +'%Y%m%d%H%M%S')"
-          git push origin "v$(date +'%Y%m%d%H%M%S')"
+          TAG="v$(date +'%Y%m%d%H%M%S')"
+          git tag $TAG
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} $TAG
 
       # Step 5: Upload the JAR file as an artifact (for debugging or download)
       - name: Upload JAR Artifact
