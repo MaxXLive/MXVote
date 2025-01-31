@@ -45,12 +45,17 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Version extracted: $VERSION"
 
-      # Step 6: Upload JAR to GitHub Release
+      # Step 6: set release name
+      - name: Set release name
+        id: set_release_name
+        run: echo "RELEASE_NAME=$(basename $GITHUB_REPOSITORY) ${{ env.VERSION }}" >> $GITHUB_ENV
+
+      # Step 7: Upload JAR to GitHub Release
       - name: Upload JAR to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.MXVOTE_CREATE_RELEASE }}
           files: target/mx*.jar
           tag_name: ${{ env.VERSION }}
-          name: ${{ github.repository }} ${{ env.VERSION }}
+          name: ${{ env.RELEASE_NAME }}
 
