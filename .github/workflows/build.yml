@@ -47,11 +47,11 @@ jobs:
 
       # Step 6: Upload JAR to GitHub Release
       - name: Upload JAR to GitHub Release
-        uses: actions/create-release@latest
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: target/*.jar
-          release_name: Release ${{ github.ref }}
           tag_name: v${{ env.VERSION }}
 
