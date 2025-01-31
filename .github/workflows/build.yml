@@ -52,5 +52,5 @@ jobs:
           token: ${{ secrets.MXVOTE_CREATE_RELEASE }}
           files: target/mx*.jar
           tag_name: v${{ env.VERSION }}
-          name: ${{ github.repository } v${{ env.VERSION }}
+          name: ${{ github.repository }} v${{ env.VERSION }}
 
