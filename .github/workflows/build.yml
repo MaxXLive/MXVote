@@ -41,7 +41,7 @@ jobs:
       - name: Extract version from pom.xml
         id: extract_version
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Version extracted: $VERSION"
 
@@ -51,6 +51,6 @@ jobs:
         with:
           token: ${{ secrets.MXVOTE_CREATE_RELEASE }}
           files: target/mx*.jar
-          tag_name: v${{ env.VERSION }}
-          name: ${{ github.repository }}-${{ env.VERSION }}
+          tag_name: ${{ env.VERSION }}
+          name: ${{ github.repository }} ${{ env.VERSION }}
 
