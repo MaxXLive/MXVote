@@ -30,24 +30,27 @@ jobs:
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      # Step 4: Create a tag (using the commit SHA)
-      - name: Create Git tag
-        run: |
-          TAG="v$(date +'%Y%m%d%H%M%S')"
-          git tag $TAG
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} $TAG
-
-      # Step 5: Upload the JAR file as an artifact (for debugging or download)
+      # Step 4: Upload the JAR file as an artifact (for debugging or download)
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
         with:
           name: minecraft-plugin-jar
           path: target/*.jar
 
+      # Step 5: Extract version from pom.xml
+      - name: Extract version from pom.xml
+        id: extract_version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version extracted: $VERSION"
+
       # Step 6: Upload JAR to GitHub Release
       - name: Upload JAR to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: target/*.jar
+          tag_name: ${{ env.VERSION }}
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
