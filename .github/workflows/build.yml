@@ -1,0 +1,61 @@
+name: Build and Release Minecraft Plugin
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Oracle JDK 23
+      - name: Set up Oracle JDK 23
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'oracle'
+          java-version: '23'
+
+      # Step 3: Build the project with Maven
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      # Step 4: Upload the JAR file as an artifact (for debugging or download)
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: minecraft-plugin-jar
+          path: target/mx*.jar
+
+      # Step 5: Extract version from pom.xml
+      - name: Extract version from pom.xml
+        id: extract_version
+        run: |
+          VERSION=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version extracted: $VERSION"
+
+      # Step 6: set release name
+      - name: Set release name
+        id: set_release_name
+        run: echo "RELEASE_NAME=$(basename $GITHUB_REPOSITORY) ${{ env.VERSION }}" >> $GITHUB_ENV
+
+      # Step 7: Upload JAR to GitHub Release
+      - name: Upload JAR to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.MXVOTE_CREATE_RELEASE }}
+          files: target/mx*.jar
+          tag_name: ${{ env.VERSION }}
+          name: ${{ env.RELEASE_NAME }}
+

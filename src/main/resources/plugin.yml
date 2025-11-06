@@ -9,7 +9,7 @@ commands:
     usage: /mxvote
   vote:
     description: Start a vote
-    usage: /vote <type>
+    usage: /vote <day/night/sunny>
     aliases: [v]
 permissions:
   mxvote.vote.day:
