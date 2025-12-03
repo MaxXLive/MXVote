@@ -1,9 +1,13 @@
-package de.ermackov.mxvote.command
+package de.ermackov.mxvote
 
 import de.ermackov.mxvote.config.VoteConfig
 import de.ermackov.mxvote.entities.Vote
+import de.ermackov.mxvote.entities.Requests
+import de.ermackov.mxvote.entities.Time
 import de.ermackov.mxvote.entities.VoteType
+import de.ermackov.mxvote.entities.Weather
 import de.ermackov.mxvote.entities.formatVoteType
+import de.ermackov.mxvote.util.Format.formatPlayerNames
 import net.md_5.bungee.api.chat.ClickEvent
 import net.md_5.bungee.api.chat.ComponentBuilder
 import net.md_5.bungee.api.chat.TextComponent
@@ -13,92 +17,48 @@ import org.bukkit.World
 import org.bukkit.boss.BarColor
 import org.bukkit.boss.BarStyle
 import org.bukkit.boss.BossBar
-import org.bukkit.command.Command
-import org.bukkit.command.CommandExecutor
-import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
+import java.util.UUID
 import kotlin.math.ceil
 
-class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : CommandExecutor {
+class Voting(private val plugin: JavaPlugin, private val config: VoteConfig, val data: DataProvider) {
 
     private val prefix: String = ChatColor.translateAlternateColorCodes('&', config.getMessagePrefix())
 
+
+    var voteInProgress = false
+
     private var votes = mutableSetOf<Vote>()
-    private var type: VoteType = VoteType.NONE
-    private var voteInProgress = false
+    private var type: VoteType = Time.OFF
     private var world: World? = null
     private var timeLeft = config.getVoteDuration()
     private var bossBar: BossBar? = null
 
-
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (!config.isVoteEnabled()){
-            sender.sendMessage("$prefix${ChatColor.RED}Voting plugin is disabled!")
-            return true
-        }
-        if (sender !is Player) {
-            sender.sendMessage("$prefix${ChatColor.RED}Only players can vote.")
-            return true
-        }
-
-        if (args.isEmpty()) {
-            sender.sendMessage("$prefix${ChatColor.RED}Please provide an argument.")
-            return false
-        }
-
-        when (args[0]){
-            "cancel" -> handleCancel(sender)
-            "yes" -> handleVote(sender, true)
-            "no" -> handleVote(sender, false)
-            "day" -> startVote(sender, VoteType.DAY)
-            "night" -> startVote(sender, VoteType.NIGHT)
-            "sunny" -> startVote(sender, VoteType.SUNNY)
-            else -> sender.sendMessage("$prefix${ChatColor.RED}Invalid argument: ${args[0]}")
-        }
-        return true
-    }
-
-    private fun handleCancel(player: Player) {
-        if(getVoteInitiator() != player){
-            player.sendMessage("$prefix${ChatColor.RED}You are not the initiator of this voting!")
-            return
-        }
-
-        Bukkit.broadcastMessage("$prefix${ChatColor.YELLOW}${player.name} has canceled the voting for: ${formatVoteType(type)}")
-        resetVoting()
-    }
-
-    private fun startVote(initiator: Player, voteType: VoteType) {
-        if( (!initiator.hasPermission("mxvote.vote.day")) && voteType == VoteType.DAY){
-            initiator.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
-            return
-        }
-        if( (!initiator.hasPermission("mxvote.vote.night")) && voteType == VoteType.NIGHT){
-            initiator.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
-            return
-        }
-        if( (!initiator.hasPermission("mxvote.vote.sunny")) && voteType == VoteType.SUNNY){
-            initiator.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
-            return
-        }
+    fun startGroupVote(initiators: List<Player>, wrld: World, voteType: VoteType) {
         if (voteInProgress) {
-            initiator.sendMessage("$prefix${ChatColor.YELLOW}A voting is already in progress. Click below to vote:")
-            sendVoteOptions(initiator)
             return
         }
 
         votes.clear()
         voteInProgress = true
         type = voteType
-        world = initiator.world
+        world = wrld
         timeLeft = config.getVoteDuration()
 
-        votes.add(Vote(initiator, isInitiator = true, voteYes = true))
+        for (player in initiators) {
+            votes.add(Vote(player, isInitiator = true, voteYes = true))
+        }
 
-        Bukkit.broadcastMessage("$prefix${ChatColor.YELLOW}${initiator.name} has started a voting for: ${formatVoteType(type)}")
-        broadcastVote(initiator)
+        Bukkit.broadcastMessage("$prefix${ChatColor.YELLOW}${formatPlayerNames(initiators)} started a voting for: ${
+            formatVoteType(
+                type
+            )
+        }")
+
+        val ignoredPlayers = checkForAutoVotes(initiators)
+        broadcastVote(initiators)
 
         createBossBar()
         // Schedule vote timeout (e.g., 30 seconds)
@@ -120,10 +80,103 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
         checkResults()
     }
 
+    fun startVote(initiator: Player, voteType: VoteType) {
+        if( (!initiator.hasPermission("mxvote.vote.day")) && voteType == Time.DAY){
+            initiator.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
+            return
+        }
+        if( (!initiator.hasPermission("mxvote.vote.night")) && voteType == Time.NIGHT){
+            initiator.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
+            return
+        }
+        if( (!initiator.hasPermission("mxvote.vote.sunny")) && voteType == Weather.SUNNY){
+            initiator.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
+            return
+        }
+        if (voteInProgress) {
+            initiator.sendMessage("$prefix${ChatColor.YELLOW}A voting is already in progress. Click below to vote:")
+            sendVoteOptions(initiator)
+            return
+        }
 
-    private fun broadcastVote(playerToExclude: Player) {
+        votes.clear()
+        voteInProgress = true
+        type = voteType
+        world = initiator.world
+        timeLeft = config.getVoteDuration()
+
+        votes.add(Vote(initiator, isInitiator = true, voteYes = true))
+
+        Bukkit.broadcastMessage("$prefix${ChatColor.YELLOW}${initiator.name} has started a voting for: ${
+            formatVoteType(
+                type
+            )
+        }")
+
+        val ignoredPlayers = checkForAutoVotes(listOf(initiator))
+
+        broadcastVote(ignoredPlayers)
+
+        createBossBar()
+        // Schedule vote timeout (e.g., 30 seconds)
+        object : BukkitRunnable() {
+            override fun run() {
+                if (!voteInProgress) {
+                    cancel()
+                    return
+                }
+                timeLeft--
+                updateBossBar()
+                if (timeLeft <= 0) {
+                    endVote()
+                    cancel()
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L)
+
+        checkResults()
+    }
+
+    private fun checkForAutoVotes(initiators: List<Player>): List<Player> {
+        val ignoredPlayers = initiators.toMutableList()
+
+        data.getUserData().users.forEach { user ->
+            val player = Bukkit.getPlayer(UUID.fromString(user.id)) ?: return@forEach
+            if (ignoredPlayers.contains(player)) return@forEach
+
+            if (user.autovotes.requests == Requests.YES) {
+                votes.add(Vote(player, isInitiator = false, voteYes = true))
+                ignoredPlayers.add(player)
+                player.sendMessage("$prefix${ChatColor.AQUA}You have automatically voted: Yes")
+            } else if (user.autovotes.requests == Requests.NO) {
+                ignoredPlayers.add(player)
+                votes.add(Vote(player, isInitiator = false, voteYes = false))
+                player.sendMessage("$prefix${ChatColor.AQUA}You have automatically voted: No")
+            }
+        }
+        return ignoredPlayers
+    }
+
+    fun handleCancel(player: Player) {
+        if(getVoteInitiator() != player){
+            player.sendMessage("$prefix${ChatColor.RED}You are not the initiator of this voting!")
+            return
+        }
+
+        Bukkit.broadcastMessage("$prefix${ChatColor.YELLOW}${player.name} has canceled the voting for: ${
+            formatVoteType(
+                type
+            )
+        }")
+        resetVoting()
+    }
+
+
+
+
+    private fun broadcastVote(playersToExclude: List<Player>) {
         Bukkit.getOnlinePlayers().forEach { player ->
-            if (player != playerToExclude) {
+            if (!playersToExclude.contains(player)) {
                 sendVoteOptions(player)
             }
         }
@@ -147,7 +200,7 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
         player.spigot().sendMessage(*fullMessage)
     }
 
-    private fun handleVote(player: Player, voteYes: Boolean) {
+    fun handleVote(player: Player, voteYes: Boolean) {
         if(!player.hasPermission("mxvote.vote.contribute")){
             player.sendMessage("$prefix${ChatColor.RED}You don't have permission to use this command!")
             return
@@ -227,17 +280,17 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
     }
 
     private fun voteUnsuccessful() {
-        Bukkit.broadcastMessage("$prefix${ChatColor.RED}Voting failed. (${countYes()} of ${votes.size} voters agreed (${(countYes().toDouble() / votes.size.toDouble()) * 100}%))\")")
+        Bukkit.broadcastMessage("$prefix${ChatColor.RED}Voting failed. ${countYes()} of ${votes.size} voters agreed (${(countYes().toDouble() / votes.size.toDouble()) * 100}%)")
         resetVoting()
     }
 
     private fun voteSuccessful() {
-        Bukkit.broadcastMessage("$prefix${ChatColor.AQUA}Voting passed! (${countYes()} of ${votes.size} voters agreed (${(countYes().toDouble()/votes.size.toDouble())*100}%))")
+        Bukkit.broadcastMessage("$prefix${ChatColor.AQUA}Voting passed! ${countYes()} of ${votes.size} voters agreed (${(countYes().toDouble()/votes.size.toDouble())*100}%)")
         when (type){
-            VoteType.DAY -> applyTime(1000)
-            VoteType.NIGHT -> applyTime(18000)
-            VoteType.SUNNY -> applyWeather()
-            VoteType.NONE -> plugin.logger.warning("$prefix Vote was successful but type is NONE!")
+            Time.DAY -> applyTime(1000)
+            Time.NIGHT -> applyTime(18000)
+            Weather.SUNNY -> applyWeather()
+            else -> plugin.logger.warning("$prefix Vote was successful but type is NONE!")
         }
         resetVoting()
     }
@@ -245,7 +298,7 @@ class Vote(private val plugin: JavaPlugin, private val config: VoteConfig) : Com
     private fun resetVoting() {
         voteInProgress = false
         votes.clear()
-        type = VoteType.NONE
+        type = Time.OFF
         world = null
         bossBar?.isVisible = false
     }

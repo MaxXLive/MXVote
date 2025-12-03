@@ -1,4 +1,4 @@
-package de.ermackov.mxvote.command
+package de.ermackov.mxvote.command.vote
 
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender

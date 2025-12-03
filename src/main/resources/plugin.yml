@@ -11,6 +11,10 @@ commands:
     description: Start a vote
     usage: /vote <day/night/sunny>
     aliases: [v]
+  autovote:
+    description: Adjust the autovote settings
+    usage: /autovote <day/night/sunny/yes/no>
+    aliases: [av]
 permissions:
   mxvote.vote.day:
     description: Allows players to vote for "Day"
